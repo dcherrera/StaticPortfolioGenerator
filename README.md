@@ -330,4 +330,4 @@ npm run build       # Production build
 
 ## License
 
-MIT
+MIT-T
