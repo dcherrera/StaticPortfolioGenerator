@@ -1,0 +1,32 @@
+site:
+  title: My Portfolio
+  description: Developer portfolio
+header:
+  title: My Name
+  nav:
+    - label: Projects
+      path: /projects
+    - label: Blog
+      path: /blog
+    - label: About
+      path: /about
+footer:
+  copyright: 2026 My Name
+  github: https://github.com/username
+  socialLinks: []
+homepage:
+  hero:
+    title: "Hi, I'm [Your Name]"
+    subtitle:
+      - Software Developer
+    buttons:
+      - label: View Projects
+        path: /projects
+        style: primary
+      - label: About Me
+        path: /about
+        style: outline
+  showFeaturedProjects: true
+  showRecentPosts: true
+  projectsLimit: 4
+  postsLimit: 3

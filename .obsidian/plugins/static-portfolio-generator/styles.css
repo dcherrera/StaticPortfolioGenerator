@@ -1,0 +1,541 @@
+/* Site Structure View */
+.spg-view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.spg-view-header h4 {
+  margin: 0;
+}
+
+.spg-structure-section {
+  padding: 8px 12px;
+}
+
+.spg-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.spg-section-title {
+  font-weight: 600;
+}
+
+.spg-section-count {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.spg-add-btn {
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+}
+
+.spg-add-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.spg-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.spg-structure-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.spg-structure-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.spg-structure-link {
+  color: var(--text-normal);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.spg-structure-link:hover {
+  color: var(--text-accent);
+}
+
+.spg-item-meta {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.spg-empty-state {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 8px;
+}
+
+.spg-refresh-btn {
+  margin-left: auto;
+  padding: 0 6px;
+  font-size: 14px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.spg-structure-item:hover .spg-refresh-btn {
+  opacity: 1;
+}
+
+.spg-refresh-btn:hover {
+  color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+}
+
+.spg-refresh-btn:disabled {
+  cursor: wait;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spg-delete-btn {
+  padding: 0 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.spg-structure-item:hover .spg-delete-btn {
+  opacity: 1;
+}
+
+.spg-delete-btn:hover {
+  color: var(--text-error);
+  background: var(--background-modifier-error);
+}
+
+.spg-delete-warning {
+  color: var(--text-error);
+  font-size: 0.9em;
+}
+
+.spg-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.spg-status-active { background: var(--color-green); }
+.spg-status-maintained { background: var(--color-blue); }
+.spg-status-paused { background: var(--color-yellow); }
+.spg-status-archived { background: var(--color-gray); }
+.spg-status-concept { background: var(--color-purple); }
+
+/* Commit Curation View */
+.spg-commit-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.spg-commit-item.hidden {
+  opacity: 0.5;
+}
+
+.spg-commit-message {
+  flex: 1;
+  font-size: 0.9em;
+}
+
+.spg-commit-date {
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
+/* Git View */
+.spg-git-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.spg-git-branch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.spg-git-branch-icon {
+  color: var(--text-muted);
+}
+
+.spg-git-branch-name {
+  font-weight: 600;
+}
+
+.spg-git-sync {
+  display: flex;
+  gap: 6px;
+  margin-left: 8px;
+  font-size: 0.85em;
+}
+
+.spg-git-ahead {
+  color: var(--color-green);
+}
+
+.spg-git-behind {
+  color: var(--color-orange);
+}
+
+.spg-git-refresh {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.spg-git-refresh:hover {
+  background: var(--background-modifier-hover);
+}
+
+.spg-git-section {
+  padding: 8px 12px;
+}
+
+.spg-git-group {
+  margin-bottom: 12px;
+}
+
+.spg-git-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 0.9em;
+}
+
+.spg-git-group-title {
+  font-weight: 600;
+}
+
+.spg-git-group-count {
+  color: var(--text-muted);
+}
+
+.spg-git-files {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.spg-git-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.spg-git-file:hover {
+  background: var(--background-modifier-hover);
+}
+
+.spg-git-file-status {
+  font-family: monospace;
+  font-size: 0.85em;
+  font-weight: 600;
+  width: 16px;
+  text-align: center;
+}
+
+.spg-git-status-modified { color: var(--color-orange); }
+.spg-git-status-added { color: var(--color-green); }
+.spg-git-status-deleted { color: var(--color-red); }
+.spg-git-status-renamed { color: var(--color-blue); }
+
+.spg-git-file-path {
+  flex: 1;
+  font-size: 0.9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spg-git-file-dir {
+  color: var(--text-muted);
+}
+
+.spg-git-file-name {
+  color: var(--text-normal);
+}
+
+.spg-git-file-action {
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  opacity: 0.6;
+}
+
+.spg-git-file:hover .spg-git-file-action {
+  opacity: 1;
+}
+
+.spg-git-file-action:hover {
+  background: var(--background-modifier-hover);
+}
+
+.spg-git-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 8px;
+  text-align: center;
+}
+
+.spg-git-commit-section {
+  padding: 8px 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spg-git-commit-input {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: inherit;
+  font-size: 0.9em;
+  resize: vertical;
+}
+
+.spg-git-commit-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.spg-git-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.spg-git-btn-primary {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.spg-git-btn-primary:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.spg-git-btn-secondary {
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+.spg-git-btn-secondary:hover {
+  background: var(--background-modifier-hover);
+}
+
+.spg-git-sync-section {
+  padding: 8px 12px;
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.spg-git-error {
+  color: var(--text-error);
+  padding: 12px;
+  text-align: center;
+}
+
+/* Site Settings View */
+.spg-site-settings {
+  padding: 12px;
+}
+
+.spg-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 16px;
+}
+
+.spg-settings-header h4 {
+  margin: 0;
+}
+
+.spg-save-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.spg-save-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.spg-settings-section {
+  margin-bottom: 20px;
+}
+
+.spg-section-title {
+  font-size: 0.9em;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.spg-section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.spg-field {
+  margin-bottom: 12px;
+}
+
+.spg-field label {
+  display: block;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.spg-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.9em;
+}
+
+.spg-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.spg-textarea {
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.spg-input-small {
+  flex: 1;
+  min-width: 0;
+}
+
+.spg-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spg-link-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.spg-add-btn-small {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.spg-add-btn-small:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.spg-remove-btn {
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.spg-remove-btn:hover {
+  color: var(--text-error);
+  border-color: var(--text-error);
+}
+
+.spg-select {
+  padding: 6px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.85em;
+  min-width: 80px;
+}

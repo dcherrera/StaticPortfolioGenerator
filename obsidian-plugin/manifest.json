@@ -1,0 +1,10 @@
+{
+  "id": "static-portfolio-generator",
+  "name": "Static Portfolio Generator",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Content management for markdown-driven portfolio sites. Create projects, blog posts, pages, and curate GitHub commits.",
+  "author": "dcherrera",
+  "authorUrl": "https://github.com/dcherrera",
+  "isDesktopOnly": false
+}

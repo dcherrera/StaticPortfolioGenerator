@@ -1,0 +1,4 @@
+# Uncomment and set your GitHub repo to fetch commits
+# repo: username/repo-name
+commitsLimit: 20
+hiddenCommits: []

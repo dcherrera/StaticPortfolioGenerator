@@ -1,0 +1,12 @@
+# GitHub repository for commit fetching
+# Format: owner/repo-name
+repo: username/repo-name
+
+# Maximum number of commits to display
+commitsLimit: 20
+
+# List of commit SHAs to hide from display
+# Use this to hide merge commits, typo fixes, etc.
+hiddenCommits: []
+  # - abc1234
+  # - def5678

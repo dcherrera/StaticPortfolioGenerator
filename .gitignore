@@ -1,0 +1,55 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+.quasar/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Obsidian plugin build artifacts (source folder)
+obsidian-plugin/dist/
+obsidian-plugin/main.js
+
+# Obsidian vault settings (user-specific)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/app.json
+.obsidian/appearance.json
+.obsidian/hotkeys.json
+.obsidian/core-plugins.json
+.obsidian/community-plugins.json
+.obsidian/core-plugins-migration.json
+.obsidian/graph.json
+# Keep .obsidian/plugins/ tracked for pre-installed plugin
+# But ignore plugin user data
+.obsidian/plugins/*/data.json
+
+# Cache
+.cache/
+_data/commits-cache.json
+
+# Build-time data
+app/public/_data/
+
+# Auto-generated store types
+app/src/stores/store-flag.d.ts

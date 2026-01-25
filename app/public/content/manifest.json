@@ -1,0 +1,15 @@
+{
+  "projects": [
+    {
+      "slug": "example-project",
+      "indexPath": "/content/projects/example-project/index.md",
+      "configPath": "/content/projects/example-project/config.yaml"
+    }
+  ],
+  "blog": [],
+  "pages": [
+    {
+      "path": "/content/pages/about.md"
+    }
+  ]
+}

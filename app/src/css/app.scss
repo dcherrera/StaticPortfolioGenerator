@@ -1,0 +1,76 @@
+// Main application styles
+@import './variables';
+@import './typography';
+@import './markdown';
+
+// Force dark mode - no light mode
+body {
+  background-color: $bg-primary;
+  color: $text-primary;
+}
+
+// Global link styles
+a {
+  color: $accent;
+  text-decoration: none;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: lighten($accent, 10%);
+  }
+}
+
+// Code blocks
+code {
+  font-family: $font-mono;
+  background-color: $bg-tertiary;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+}
+
+// Selection
+::selection {
+  background-color: rgba($accent, 0.3);
+}
+
+// Scrollbar styling
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: $bg-secondary;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $bg-tertiary;
+  border-radius: 4px;
+
+  &:hover {
+    background: lighten($bg-tertiary, 10%);
+  }
+}
+
+// Utility classes
+.text-accent {
+  color: $accent;
+}
+
+.bg-primary {
+  background-color: $bg-primary;
+}
+
+.bg-secondary {
+  background-color: $bg-secondary;
+}
+
+.bg-tertiary {
+  background-color: $bg-tertiary;
+}

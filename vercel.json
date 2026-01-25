@@ -1,0 +1,9 @@
+{
+  "buildCommand": "cd app && npm run build:ssg",
+  "outputDirectory": "app/dist/ssg",
+  "installCommand": "cd app && npm install",
+  "framework": null,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
