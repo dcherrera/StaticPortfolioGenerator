@@ -113,7 +113,7 @@ const siteConfig = computed(() => contentStore.siteConfig)
 
 // Set document title from site config
 watch(
-  () => siteConfig.value.title,
+  () => siteConfig.value.site?.title,
   (title) => {
     if (title) {
       document.title = title
