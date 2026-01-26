@@ -10,6 +10,7 @@ yarn-error.log*
 
 # Build output
 dist/
+!teamide-plugin/dist/
 .quasar/
 
 # IDE
