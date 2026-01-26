@@ -32,6 +32,11 @@ export const useSPGStore = defineStore('spg', () => {
   const error = ref<string | null>(null);
   const selectedProjectSlug = ref<string | null>(null);
 
+  // Editor state
+  const currentFilePath = ref<string | null>(null);
+  const currentFileContent = ref<string>('');
+  const originalFileContent = ref<string>('');
+
   // ===================
   // Computed
   // ===================
@@ -47,23 +52,34 @@ export const useSPGStore = defineStore('spg', () => {
     return commitsCache.value[selectedProjectSlug.value]?.commits ?? [];
   });
 
+  // Check if current file has unsaved changes
+  const isFileModified = computed(() => {
+    return currentFileContent.value !== originalFileContent.value;
+  });
+
   // ===================
   // Settings
   // ===================
   function loadSettings(): PluginSettings {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
+      console.log('[SPG Store] Loading settings from localStorage:', stored);
       if (stored) {
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+        const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+        console.log('[SPG Store] Loaded settings:', parsed);
+        return parsed;
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      console.error('[SPG Store] Error loading settings:', e);
     }
+    console.log('[SPG Store] Using default settings');
     return { ...DEFAULT_SETTINGS };
   }
 
   function saveSettings() {
+    console.log('[SPG Store] Saving settings:', settings.value);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value));
+    console.log('[SPG Store] Settings saved to key:', STORAGE_KEY);
   }
 
   function setProjectId(projectId: string) {
@@ -80,6 +96,7 @@ export const useSPGStore = defineStore('spg', () => {
   // Manifest Actions
   // ===================
   async function loadManifest() {
+    console.log('[SPG Store] loadManifest called, projectId:', settings.value.projectId);
     if (!settings.value.projectId) {
       error.value = 'No project selected';
       return;
@@ -90,10 +107,14 @@ export const useSPGStore = defineStore('spg', () => {
 
     try {
       manifest.value = await manifestService.loadManifest(settings.value.projectId);
+      console.log('[SPG Store] Manifest loaded:', manifest.value);
       if (!manifest.value) {
         error.value = 'Failed to load manifest - is this a Static Portfolio Generator project?';
+      } else {
+        console.log('[SPG Store] Projects:', manifest.value.projects.length, 'Blog:', manifest.value.blog.length, 'Pages:', manifest.value.pages.length);
       }
     } catch (e) {
+      console.error('[SPG Store] Error loading manifest:', e);
       error.value = e instanceof Error ? e.message : 'Failed to load manifest';
       manifest.value = null;
     } finally {
@@ -314,6 +335,91 @@ export const useSPGStore = defineStore('spg', () => {
   }
 
   // ===================
+  // Editor Actions
+  // ===================
+
+  /**
+   * Open a file in the plugin's embedded editor
+   */
+  async function openFileInPlugin(path: string) {
+    if (!settings.value.projectId) {
+      error.value = 'No project selected';
+      return;
+    }
+
+    console.log('[SPG Store] openFileInPlugin:', path);
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      // Convert content path to full path if needed
+      const fullPath = path.startsWith('/content')
+        ? `app/public${path}`
+        : path;
+
+      currentFilePath.value = fullPath;
+      const content = await readFile(settings.value.projectId, fullPath);
+      currentFileContent.value = content;
+      originalFileContent.value = content;
+      console.log('[SPG Store] File loaded:', fullPath, 'length:', content.length);
+    } catch (e) {
+      console.error('[SPG Store] Failed to load file:', e);
+      error.value = e instanceof Error ? e.message : 'Failed to load file';
+      currentFilePath.value = null;
+      currentFileContent.value = '';
+      originalFileContent.value = '';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /**
+   * Update file content (for editing, does not save)
+   */
+  function updateFileContent(content: string) {
+    currentFileContent.value = content;
+  }
+
+  /**
+   * Save the current file to disk
+   */
+  async function saveCurrentFile() {
+    if (!settings.value.projectId || !currentFilePath.value) {
+      error.value = 'No file to save';
+      return;
+    }
+
+    if (!isFileModified.value) {
+      console.log('[SPG Store] File not modified, skipping save');
+      return;
+    }
+
+    console.log('[SPG Store] Saving file:', currentFilePath.value);
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      await writeFile(settings.value.projectId, currentFilePath.value, currentFileContent.value);
+      originalFileContent.value = currentFileContent.value;
+      console.log('[SPG Store] File saved successfully');
+    } catch (e) {
+      console.error('[SPG Store] Failed to save file:', e);
+      error.value = e instanceof Error ? e.message : 'Failed to save file';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /**
+   * Close the current file
+   */
+  function closeCurrentFile() {
+    currentFilePath.value = null;
+    currentFileContent.value = '';
+    originalFileContent.value = '';
+  }
+
+  // ===================
   // Return
   // ===================
   return {
@@ -326,6 +432,10 @@ export const useSPGStore = defineStore('spg', () => {
     error,
     selectedProjectSlug,
 
+    // Editor state
+    currentFilePath,
+    currentFileContent,
+
     // Computed
     isConfigured,
     hasGitHubToken,
@@ -333,6 +443,7 @@ export const useSPGStore = defineStore('spg', () => {
     blogPosts,
     pages,
     selectedProjectCommits,
+    isFileModified,
 
     // Actions
     setProjectId,
@@ -342,6 +453,12 @@ export const useSPGStore = defineStore('spg', () => {
     refreshCommits,
     toggleCommitVisibility,
     pullReadme,
-    selectProject
+    selectProject,
+
+    // Editor actions
+    openFileInPlugin,
+    updateFileContent,
+    saveCurrentFile,
+    closeCurrentFile
   };
 });

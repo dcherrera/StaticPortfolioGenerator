@@ -71,10 +71,9 @@ const deleteItemType = ref<'project' | 'blog' | 'page'>('project');
 const pendingDelete = ref<{ type: string; data: any } | null>(null);
 
 function openFile(path: string) {
-  // Emit event to parent to open file in TeamIDE editor
-  // This would need integration with TeamIDE's code module
-  console.log('Open file:', path);
-  // TODO: Integrate with TeamIDE's editor API
+  console.log('[SPG Plugin] openFile called:', path);
+  // Open file in the plugin's embedded editor (stays in plugin module)
+  store.openFileInPlugin(path);
 }
 
 function confirmDeleteProject(project: { slug: string }) {
