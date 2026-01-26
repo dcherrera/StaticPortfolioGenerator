@@ -7,30 +7,51 @@
     </div>
 
     <template v-else>
-      <!-- Site Structure -->
-      <SiteStructure
-        @new-project="showNewProjectDialog = true"
-        @new-blog-post="showNewBlogPostDialog = true"
-        @new-page="showNewPageDialog = true"
-        @delete-project="confirmDeleteProject"
-        @delete-blog-post="confirmDeleteBlogPost"
-        @delete-page="confirmDeletePage"
-        @open-file="openFile"
-      />
-
-      <q-separator class="q-my-md" />
-
-      <!-- Commit Curation -->
-      <CommitCuration />
-
-      <q-separator class="q-my-md" />
-
-      <!-- Quick Actions -->
+      <!-- Quick Actions (at top) -->
       <QuickActions
         @new-project="showNewProjectDialog = true"
         @new-blog-post="showNewBlogPostDialog = true"
         @new-page="showNewPageDialog = true"
       />
+
+      <!-- Tabs -->
+      <q-tabs
+        v-model="activeTab"
+        dense
+        class="context-tabs"
+        active-color="primary"
+        indicator-color="primary"
+        narrow-indicator
+      >
+        <q-tab name="structure" label="Structure" />
+        <q-tab name="commits" label="Commits" />
+        <q-tab name="settings" label="Settings" />
+      </q-tabs>
+
+      <q-separator />
+
+      <!-- Tab Panels -->
+      <q-tab-panels v-model="activeTab" animated class="tab-panels">
+        <q-tab-panel name="structure" class="tab-panel">
+          <SiteStructure
+            @new-project="showNewProjectDialog = true"
+            @new-blog-post="showNewBlogPostDialog = true"
+            @new-page="showNewPageDialog = true"
+            @delete-project="confirmDeleteProject"
+            @delete-blog-post="confirmDeleteBlogPost"
+            @delete-page="confirmDeletePage"
+            @open-file="openFile"
+          />
+        </q-tab-panel>
+
+        <q-tab-panel name="commits" class="tab-panel">
+          <CommitCuration />
+        </q-tab-panel>
+
+        <q-tab-panel name="settings" class="tab-panel">
+          <SiteSettings />
+        </q-tab-panel>
+      </q-tab-panels>
     </template>
 
     <!-- Dialogs -->
@@ -52,12 +73,16 @@ import { useSPGStore } from './store';
 import SiteStructure from './components/SiteStructure.vue';
 import CommitCuration from './components/CommitCuration.vue';
 import QuickActions from './components/QuickActions.vue';
+import SiteSettings from './components/SiteSettings.vue';
 import NewProjectDialog from './components/NewProjectDialog.vue';
 import NewBlogPostDialog from './components/NewBlogPostDialog.vue';
 import NewPageDialog from './components/NewPageDialog.vue';
 import ConfirmDeleteDialog from './components/ConfirmDeleteDialog.vue';
 
 const store = useSPGStore();
+
+// Tab state
+const activeTab = ref('structure');
 
 // Dialog visibility
 const showNewProjectDialog = ref(false);
@@ -113,6 +138,24 @@ async function executeDelete() {
 
 <style scoped>
 .spg-context {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.context-tabs {
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+.tab-panels {
+  flex: 1;
+  overflow: hidden;
+  background: transparent;
+}
+
+.tab-panel {
   padding: 12px;
   height: 100%;
   overflow-y: auto;
@@ -126,6 +169,7 @@ async function executeDelete() {
   height: 200px;
   text-align: center;
   opacity: 0.6;
+  padding: 12px;
 }
 
 .not-configured p {
