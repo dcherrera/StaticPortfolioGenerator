@@ -53,3 +53,8 @@ app/public/_data/
 
 # Auto-generated store types
 app/src/stores/store-flag.d.ts
+
+# Development planning files
+build_plan.md
+build_spec.md
+claude.md
