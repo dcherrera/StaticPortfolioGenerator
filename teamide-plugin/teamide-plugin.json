@@ -1,0 +1,12 @@
+{
+  "id": "spg",
+  "name": "Portfolio Generator",
+  "version": "1.0.0",
+  "description": "Manage your Static Portfolio Generator content - projects, blog posts, pages, and GitHub commits",
+  "icon": "web",
+  "entry": "dist/index.js",
+  "styles": "dist/style.css",
+  "teamideVersion": ">=1.0.0",
+  "author": "David Herrera",
+  "license": "MIT"
+}
