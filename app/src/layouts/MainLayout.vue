@@ -104,12 +104,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useContentStore } from 'src/stores/content'
 
 const drawer = ref(false)
 const contentStore = useContentStore()
 const siteConfig = computed(() => contentStore.siteConfig)
+
+// Set document title from site config
+watch(
+  () => siteConfig.value.title,
+  (title) => {
+    if (title) {
+      document.title = title
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style lang="scss" scoped>
