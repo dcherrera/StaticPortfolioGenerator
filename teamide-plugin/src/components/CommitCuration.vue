@@ -1,52 +1,60 @@
 <template>
   <div class="commit-curation">
-    <div class="curation-header">
-      <span class="curation-title">Commit Curation</span>
-      <q-btn
-        flat
-        dense
-        icon="sync"
-        size="sm"
-        :loading="store.isLoading"
-        @click="refreshCommits"
-      />
-    </div>
-
     <div v-if="!store.selectedProjectSlug" class="empty-state">
-      Select a project to view commits
+      Select a project from the Structure tab to view commits
     </div>
 
-    <div v-else-if="store.selectedProjectCommits.length === 0" class="empty-state">
-      <template v-if="store.isLoading">Loading commits...</template>
-      <template v-else>
-        No commits. Click refresh to fetch from GitHub.
-      </template>
-    </div>
-
-    <div v-else class="commits-list">
-      <div
-        v-for="commit in store.selectedProjectCommits"
-        :key="commit.sha"
-        class="commit-item"
-        :class="{ hidden: commit.hidden }"
-      >
-        <q-checkbox
-          :model-value="!commit.hidden"
+    <template v-else>
+      <!-- Project header with refresh -->
+      <div class="project-header">
+        <span class="project-name">{{ store.selectedProjectSlug }}</span>
+        <q-btn
+          flat
           dense
-          @update:model-value="toggleVisibility(commit)"
-        />
-        <div class="commit-info">
-          <div class="commit-message">
-            {{ truncateMessage(commit.message) }}
-          </div>
-          <div class="commit-meta">
-            <span class="commit-sha">{{ commit.sha.substring(0, 7) }}</span>
-            <span class="commit-sep">&bull;</span>
-            <span class="commit-date">{{ formatDate(commit.date) }}</span>
+          round
+          icon="sync"
+          size="sm"
+          :loading="store.isLoading"
+          @click="refreshCommits"
+        >
+          <q-tooltip>Refresh commits from GitHub</q-tooltip>
+        </q-btn>
+      </div>
+
+      <div v-if="store.selectedProjectCommits.length === 0" class="empty-state">
+        <template v-if="store.isLoading">Loading commits...</template>
+        <template v-else>
+          No commits cached. Click refresh to fetch from GitHub.
+        </template>
+      </div>
+
+      <div v-else class="commits-list">
+        <div
+          v-for="commit in store.selectedProjectCommits"
+          :key="commit.sha"
+          class="commit-item"
+          :class="{ hidden: commit.hidden }"
+        >
+          <q-checkbox
+            :model-value="!commit.hidden"
+            dense
+            @update:model-value="toggleVisibility(commit)"
+          >
+            <q-tooltip>{{ commit.hidden ? 'Show on site' : 'Hide from site' }}</q-tooltip>
+          </q-checkbox>
+          <div class="commit-info">
+            <div class="commit-message">
+              {{ truncateMessage(commit.message) }}
+            </div>
+            <div class="commit-meta">
+              <span class="commit-sha">{{ commit.sha.substring(0, 7) }}</span>
+              <span class="commit-sep">&bull;</span>
+              <span class="commit-date">{{ formatDate(commit.date) }}</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -83,27 +91,29 @@ function formatDate(dateStr: string): string {
 .commit-curation {
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 
-.curation-header {
+.project-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 4px 0 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 8px;
 }
 
-.curation-title {
+.project-name {
   font-weight: 600;
   font-size: 13px;
+  color: #9c7cff;
 }
 
 .commits-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 300px;
+  flex: 1;
   overflow-y: auto;
 }
 
