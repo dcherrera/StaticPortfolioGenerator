@@ -2,6 +2,23 @@
  * TypeScript interfaces for the Static Portfolio Generator TeamIDE plugin
  */
 
+// TeamIDE Plugin API (provided by host application)
+interface TeamIDEPluginAPI {
+  openFile: (path: string, projectId?: string) => Promise<void>;
+  getProjectId: () => string | null;
+  switchModule: (moduleId: string) => void;
+  getGitHubToken: () => string | null;
+  getGitHubUsername: () => string | null;
+  getPluginSettings: (pluginId: string) => Promise<Record<string, unknown> | null>;
+  savePluginSettings: (pluginId: string, settings: Record<string, unknown>) => Promise<void>;
+}
+
+declare global {
+  interface Window {
+    __teamide?: TeamIDEPluginAPI;
+  }
+}
+
 // Plugin settings (stored in localStorage)
 export interface PluginSettings {
   githubToken: string;

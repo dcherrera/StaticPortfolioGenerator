@@ -61,7 +61,13 @@
             </template>
           </q-select>
 
+          <!-- Show token status or input -->
+          <div v-if="hasTeamIDEToken" class="token-status">
+            <q-icon name="check_circle" color="positive" size="20px" />
+            <span>Using GitHub token from TeamIDE</span>
+          </div>
           <q-input
+            v-else
             v-model="tokenInput"
             label="GitHub Token (optional)"
             hint="For fetching commits and README from GitHub"
@@ -91,6 +97,11 @@ const projectIdInput = ref(store.settings.projectId);
 const tokenInput = ref(store.settings.githubToken);
 const isLoadingRepos = ref(false);
 const availableRepos = ref<Array<{ id: string; name: string; fullName: string }>>([]);
+
+// Check if TeamIDE provides a GitHub token
+const hasTeamIDEToken = computed(() => {
+  return !!window.__teamide?.getGitHubToken?.();
+});
 
 // Compute repo options for dropdown
 const repoOptions = computed(() => {
@@ -138,15 +149,13 @@ function openSettings() {
   fetchAvailableRepos();
 }
 
-function saveSettingsAndClose() {
+async function saveSettingsAndClose() {
   console.log('[SPG PluginNav] saveSettingsAndClose called, projectId:', projectIdInput.value);
-  store.setProjectId(projectIdInput.value);
-  store.setGitHubToken(tokenInput.value);
+  await store.setProjectId(projectIdInput.value);
+  await store.setGitHubToken(tokenInput.value);
   showSettings.value = false;
 
-  // Verify localStorage was set
-  const saved = localStorage.getItem('spg-plugin-settings');
-  console.log('[SPG PluginNav] After save, localStorage contains:', saved);
+  console.log('[SPG PluginNav] Settings saved to persistent storage');
 
   // Reload manifest if project changed
   if (projectIdInput.value) {
@@ -154,7 +163,10 @@ function saveSettingsAndClose() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Load settings from persistent storage first
+  await store.loadSettings();
+
   // Load manifest if already configured
   if (store.isConfigured) {
     store.loadManifest();
@@ -197,5 +209,16 @@ onMounted(() => {
 
 .spg-nav-btn {
   justify-content: flex-start;
+}
+
+.token-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(76, 175, 80, 0.1);
+  border-radius: 4px;
+  font-size: 14px;
+  color: #4caf50;
 }
 </style>

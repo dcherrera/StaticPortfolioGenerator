@@ -18,13 +18,14 @@ import * as manifestService from './services/manifest';
 import * as github from './services/github';
 import { readFile, writeFile } from './services/files';
 
-const STORAGE_KEY = 'spg-plugin-settings';
+const PLUGIN_ID = '_user_settings_spg';
 
 export const useSPGStore = defineStore('spg', () => {
   // ===================
   // State
   // ===================
-  const settings = ref<PluginSettings>(loadSettings());
+  const settings = ref<PluginSettings>({ ...DEFAULT_SETTINGS });
+  const settingsLoaded = ref(false);
   const manifest = ref<ContentManifest | null>(null);
   const commitsCache = ref<CommitsCache>({});
   const userRepos = ref<RepoInfo[]>([]);
@@ -41,7 +42,17 @@ export const useSPGStore = defineStore('spg', () => {
   // Computed
   // ===================
   const isConfigured = computed(() => !!settings.value.projectId);
-  const hasGitHubToken = computed(() => !!settings.value.githubToken);
+
+  // Get GitHub token - prefer TeamIDE's token, fallback to plugin settings
+  const githubToken = computed(() => {
+    // Try to get token from TeamIDE first
+    const teamideToken = window.__teamide?.getGitHubToken?.();
+    if (teamideToken) return teamideToken;
+    // Fallback to plugin settings
+    return settings.value.githubToken || null;
+  });
+
+  const hasGitHubToken = computed(() => !!githubToken.value);
 
   const projects = computed(() => manifest.value?.projects ?? []);
   const blogPosts = computed(() => manifest.value?.blog ?? []);
@@ -60,36 +71,43 @@ export const useSPGStore = defineStore('spg', () => {
   // ===================
   // Settings
   // ===================
-  function loadSettings(): PluginSettings {
+  async function loadSettings() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      console.log('[SPG Store] Loading settings from localStorage:', stored);
+      console.log('[SPG Store] Loading settings from TeamIDE...');
+      const stored = await window.__teamide?.getPluginSettings?.(PLUGIN_ID);
       if (stored) {
-        const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
-        console.log('[SPG Store] Loaded settings:', parsed);
-        return parsed;
+        settings.value = { ...DEFAULT_SETTINGS, ...stored as PluginSettings };
+        console.log('[SPG Store] Loaded settings:', settings.value);
+      } else {
+        console.log('[SPG Store] No stored settings, using defaults');
+        settings.value = { ...DEFAULT_SETTINGS };
       }
     } catch (e) {
       console.error('[SPG Store] Error loading settings:', e);
+      settings.value = { ...DEFAULT_SETTINGS };
+    } finally {
+      settingsLoaded.value = true;
     }
-    console.log('[SPG Store] Using default settings');
-    return { ...DEFAULT_SETTINGS };
   }
 
-  function saveSettings() {
-    console.log('[SPG Store] Saving settings:', settings.value);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value));
-    console.log('[SPG Store] Settings saved to key:', STORAGE_KEY);
+  async function saveSettings() {
+    try {
+      console.log('[SPG Store] Saving settings:', settings.value);
+      await window.__teamide?.savePluginSettings?.(PLUGIN_ID, settings.value);
+      console.log('[SPG Store] Settings saved');
+    } catch (e) {
+      console.error('[SPG Store] Error saving settings:', e);
+    }
   }
 
-  function setProjectId(projectId: string) {
+  async function setProjectId(projectId: string) {
     settings.value.projectId = projectId;
-    saveSettings();
+    await saveSettings();
   }
 
-  function setGitHubToken(token: string) {
+  async function setGitHubToken(token: string) {
     settings.value.githubToken = token;
-    saveSettings();
+    await saveSettings();
   }
 
   // ===================
@@ -126,7 +144,7 @@ export const useSPGStore = defineStore('spg', () => {
   // GitHub Actions
   // ===================
   async function fetchUserRepos() {
-    if (!settings.value.githubToken) {
+    if (!githubToken.value) {
       error.value = 'GitHub token not configured';
       return;
     }
@@ -135,7 +153,7 @@ export const useSPGStore = defineStore('spg', () => {
     error.value = null;
 
     try {
-      userRepos.value = await github.fetchUserRepos(settings.value.githubToken);
+      userRepos.value = await github.fetchUserRepos(githubToken.value);
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to fetch repos';
     } finally {
@@ -177,7 +195,7 @@ export const useSPGStore = defineStore('spg', () => {
 
       // Fetch commits
       const commits = await github.fetchCommits(
-        settings.value.githubToken,
+        githubToken.value || '',
         parsed.owner,
         parsed.repo,
         limit
@@ -266,7 +284,7 @@ export const useSPGStore = defineStore('spg', () => {
   }
 
   async function pullReadme(projectSlug: string) {
-    if (!settings.value.projectId || !settings.value.githubToken) return;
+    if (!settings.value.projectId || !githubToken.value) return;
 
     const project = manifest.value?.projects.find(p => p.slug === projectSlug);
     if (!project?.configPath) return;
@@ -293,7 +311,7 @@ export const useSPGStore = defineStore('spg', () => {
 
       // Fetch README
       const readme = await github.fetchReadme(
-        settings.value.githubToken,
+        githubToken.value || '',
         parsed.owner,
         parsed.repo
       );
@@ -439,6 +457,8 @@ export const useSPGStore = defineStore('spg', () => {
     // Computed
     isConfigured,
     hasGitHubToken,
+    githubToken,
+    settingsLoaded,
     projects,
     blogPosts,
     pages,
@@ -446,6 +466,7 @@ export const useSPGStore = defineStore('spg', () => {
     isFileModified,
 
     // Actions
+    loadSettings,
     setProjectId,
     setGitHubToken,
     loadManifest,
