@@ -6,6 +6,7 @@
 
 import { defineComponent, h } from 'vue';
 import PluginNav from './PluginNav.vue';
+import PluginMain from './PluginMain.vue';
 import PluginContext from './PluginContext.vue';
 
 // Define ModuleDefinition interface locally (to avoid external imports)
@@ -34,8 +35,8 @@ const plugin: ModuleDefinition = {
   // Minimal nav component - just shows status and settings
   navigationComponent: PluginNav,
 
-  // No main component - we use TeamIDE's code editor
-  // mainComponent: undefined,
+  // Main component - embedded markdown editor with Properties panel
+  mainComponent: PluginMain,
 
   // Rich context component - Site Structure, Commit Curation, Quick Actions
   contextComponent: PluginContext,

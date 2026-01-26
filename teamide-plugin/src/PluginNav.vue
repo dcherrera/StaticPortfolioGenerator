@@ -12,7 +12,7 @@
         size="16px"
       />
       <span class="spg-nav-status-text">
-        {{ store.isConfigured ? 'Connected' : 'No project selected' }}
+        {{ store.isConfigured ? selectedRepoName : 'No project selected' }}
       </span>
     </div>
 
@@ -20,32 +20,51 @@
       flat
       dense
       icon="settings"
-      label="Settings"
+      label="Plugin Settings"
       class="spg-nav-btn"
-      @click="showSettings = true"
+      @click="openSettings"
     />
 
     <!-- Settings Dialog -->
     <q-dialog v-model="showSettings">
-      <q-card style="min-width: 350px">
+      <q-card style="min-width: 400px">
         <q-card-section>
-          <div class="text-h6">Plugin Settings</div>
+          <div class="text-h6">Portfolio Generator Settings</div>
         </q-card-section>
 
         <q-card-section>
-          <q-input
+          <q-select
             v-model="projectIdInput"
-            label="Project ID"
-            hint="The repository identifier for file operations"
+            :options="repoOptions"
+            label="Select Repository"
+            hint="Choose the portfolio site repository"
             outlined
             dense
+            emit-value
+            map-options
             class="q-mb-md"
-          />
+            :loading="isLoadingRepos"
+          >
+            <template #prepend>
+              <q-icon name="folder" />
+            </template>
+            <template #option="{ itemProps, opt }">
+              <q-item v-bind="itemProps">
+                <q-item-section avatar>
+                  <q-icon name="folder" size="sm" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ opt.label }}</q-item-label>
+                  <q-item-label caption>{{ opt.caption }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
 
           <q-input
             v-model="tokenInput"
-            label="GitHub Token"
-            hint="Personal access token for GitHub API"
+            label="GitHub Token (optional)"
+            hint="For fetching commits and README from GitHub"
             outlined
             dense
             type="password"
@@ -62,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useSPGStore } from './store';
 
 const store = useSPGStore();
@@ -70,11 +89,64 @@ const store = useSPGStore();
 const showSettings = ref(false);
 const projectIdInput = ref(store.settings.projectId);
 const tokenInput = ref(store.settings.githubToken);
+const isLoadingRepos = ref(false);
+const availableRepos = ref<Array<{ id: string; name: string; fullName: string }>>([]);
+
+// Compute repo options for dropdown
+const repoOptions = computed(() => {
+  return availableRepos.value.map(repo => ({
+    label: repo.name,
+    value: repo.id,
+    caption: repo.fullName
+  }));
+});
+
+// Get the name of the selected repo
+const selectedRepoName = computed(() => {
+  const repo = availableRepos.value.find(r => r.id === store.settings.projectId);
+  return repo?.name || 'Connected';
+});
+
+async function fetchAvailableRepos() {
+  isLoadingRepos.value = true;
+  try {
+    // Fetch environments from native-backend
+    const response = await fetch('http://localhost:4446/environments', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('teamide-token') || 'default'}`
+      }
+    });
+    if (response.ok) {
+      const data = await response.json();
+      availableRepos.value = (data.environments || []).map((env: any) => ({
+        id: env.id,
+        name: env.name,
+        fullName: env.repo_full_name || env.name
+      }));
+    }
+  } catch (e) {
+    console.error('[SPG] Failed to fetch repos:', e);
+  } finally {
+    isLoadingRepos.value = false;
+  }
+}
+
+function openSettings() {
+  projectIdInput.value = store.settings.projectId;
+  tokenInput.value = store.settings.githubToken;
+  showSettings.value = true;
+  fetchAvailableRepos();
+}
 
 function saveSettingsAndClose() {
+  console.log('[SPG PluginNav] saveSettingsAndClose called, projectId:', projectIdInput.value);
   store.setProjectId(projectIdInput.value);
   store.setGitHubToken(tokenInput.value);
   showSettings.value = false;
+
+  // Verify localStorage was set
+  const saved = localStorage.getItem('spg-plugin-settings');
+  console.log('[SPG PluginNav] After save, localStorage contains:', saved);
 
   // Reload manifest if project changed
   if (projectIdInput.value) {
@@ -87,6 +159,8 @@ onMounted(() => {
   if (store.isConfigured) {
     store.loadManifest();
   }
+  // Fetch repos for the dropdown
+  fetchAvailableRepos();
 });
 </script>
 
