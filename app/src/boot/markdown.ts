@@ -32,6 +32,12 @@ export default boot(async ({ store }) => {
 
     contentStore.setContent(content)
 
+    // Set document title from site config
+    if (content.siteConfig?.site?.title) {
+      document.title = content.siteConfig.site.title
+      console.log('Boot: Set document title to:', content.siteConfig.site.title)
+    }
+
     console.log('Boot: Content store initialized')
   } catch (error) {
     console.error('Boot: Failed to initialize content store:', error)
