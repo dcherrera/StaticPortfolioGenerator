@@ -33,6 +33,8 @@ export default boot(async ({ store }) => {
     contentStore.setContent(content)
 
     // Set document title from site config
+    console.log('Boot: siteConfig:', content.siteConfig)
+    console.log('Boot: site.title:', content.siteConfig?.site?.title)
     if (content.siteConfig?.site?.title) {
       document.title = content.siteConfig.site.title
       console.log('Boot: Set document title to:', content.siteConfig.site.title)
