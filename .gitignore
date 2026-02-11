@@ -51,6 +51,7 @@ _data/commits-cache.json
 
 # Build-time data
 app/public/_data/
+app/public/content-bundle.json
 
 # Auto-generated store types
 app/src/stores/store-flag.d.ts

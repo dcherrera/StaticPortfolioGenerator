@@ -1,8 +1,8 @@
 /**
  * Content Loader Service
  *
- * This service loads content from the public/content folder using fetch.
- * A manifest.json file lists all content files to load.
+ * Loads content from a pre-built bundle (1 request) with fallback
+ * to individual file fetches via manifest.json (~45 requests).
  */
 
 import { parse as parseYaml } from 'yaml'
@@ -23,6 +23,20 @@ import type {
   CommitsCache,
   SiteConfig
 } from 'src/types/content'
+
+// Bundle structure (matches bundle-content.ts output)
+interface ContentBundle {
+  siteConfig: string
+  commitsCache: CommitsCache
+  projects: Array<{
+    slug: string
+    indexRaw: string
+    configRaw?: string
+    posts: Array<{ filename: string; raw: string }>
+  }>
+  blog: Array<{ filename: string; raw: string }>
+  pages: Array<{ filename: string; raw: string }>
+}
 
 // Content manifest structure
 interface ContentManifest {
@@ -276,14 +290,10 @@ const defaultSiteConfig: SiteConfig = {
   }
 }
 
-// Load site configuration
-export async function loadSiteConfig(): Promise<SiteConfig> {
-  const text = await fetchText('/content/site.yaml')
-  if (!text) return defaultSiteConfig
-
+// Parse site config yaml with defaults
+function parseSiteConfig(text: string): SiteConfig {
   try {
     const config = parseYaml(text) as Partial<SiteConfig>
-    // Merge with defaults
     return {
       site: { ...defaultSiteConfig.site, ...config.site },
       header: { ...defaultSiteConfig.header, ...config.header },
@@ -296,8 +306,133 @@ export async function loadSiteConfig(): Promise<SiteConfig> {
   }
 }
 
-// Load all content
+// Load site configuration
+export async function loadSiteConfig(): Promise<SiteConfig> {
+  const text = await fetchText('/content/site.yaml')
+  if (!text) return defaultSiteConfig
+  return parseSiteConfig(text)
+}
+
+// Load all content from the pre-built bundle (1 HTTP request)
+async function loadAllContentFromBundle(): Promise<ReturnType<typeof loadAllContent> | null> {
+  const response = await fetch('/content-bundle.json')
+  if (!response.ok) return null
+
+  const bundle: ContentBundle = await response.json()
+
+  const commitsCache: CommitsCache = bundle.commitsCache ?? {}
+  const siteConfig = bundle.siteConfig
+    ? parseSiteConfig(bundle.siteConfig)
+    : defaultSiteConfig
+
+  // Parse all projects in parallel
+  const projectResults = await Promise.all(
+    bundle.projects.map(async (proj) => {
+      const basePath = `/content/projects/${proj.slug}`
+      const parsed = await parseMarkdown<ProjectFrontmatter>(proj.indexRaw, basePath)
+
+      let config: ProjectConfig = {}
+      if (proj.configRaw) {
+        try {
+          config = parseYaml(proj.configRaw) as ProjectConfig
+        } catch { /* skip bad config */ }
+      }
+
+      const posts: Post[] = []
+      for (const postEntry of proj.posts) {
+        const postParsed = await parseMarkdown<PostFrontmatter>(postEntry.raw)
+        const postSlug = getSlugFromFilename(postEntry.filename)
+        const dateFromFilename = getDateFromFilename(postEntry.filename)
+        posts.push({
+          slug: postSlug,
+          title: postParsed.frontmatter.title ?? postSlug,
+          date: postParsed.frontmatter.date ?? dateFromFilename ?? new Date().toISOString(),
+          tags: postParsed.frontmatter.tags,
+          excerpt: postParsed.frontmatter.excerpt ?? extractExcerpt(postParsed.rawContent),
+          content: postParsed.content,
+          rawContent: postParsed.rawContent
+        })
+      }
+      posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+      const commits = commitsCache[proj.slug]?.commits ?? []
+      const dates: Date[] = []
+      if (commits.length > 0) dates.push(new Date(commits[0].date))
+      if (posts.length > 0) dates.push(new Date(posts[0].date))
+      const lastUpdated = dates.length > 0
+        ? new Date(Math.max(...dates.map(d => d.getTime()))).toISOString()
+        : undefined
+
+      return {
+        slug: proj.slug,
+        title: parsed.frontmatter.title ?? proj.slug,
+        tagline: parsed.frontmatter.tagline,
+        status: parsed.frontmatter.status ?? 'concept',
+        featured: parsed.frontmatter.featured ?? false,
+        order: parsed.frontmatter.order,
+        tech: parsed.frontmatter.tech,
+        links: parsed.frontmatter.links,
+        content: parsed.content,
+        rawContent: parsed.rawContent,
+        config,
+        posts,
+        commits,
+        lastUpdated
+      } as Project
+    })
+  )
+
+  const projects = projectResults.sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+
+  // Parse blog posts in parallel
+  const blogResults = await Promise.all(
+    bundle.blog.map(async (entry) => {
+      const parsed = await parseMarkdown<PostFrontmatter>(entry.raw)
+      const slug = getSlugFromFilename(entry.filename)
+      const dateFromFilename = getDateFromFilename(entry.filename)
+      return {
+        slug,
+        title: parsed.frontmatter.title ?? slug,
+        date: parsed.frontmatter.date ?? dateFromFilename ?? new Date().toISOString(),
+        tags: parsed.frontmatter.tags,
+        project: parsed.frontmatter.project,
+        excerpt: parsed.frontmatter.excerpt ?? extractExcerpt(parsed.rawContent),
+        content: parsed.content,
+        rawContent: parsed.rawContent
+      } as Post
+    })
+  )
+  const blogPosts = blogResults.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+  // Parse pages
+  const pages: Page[] = []
+  for (const entry of bundle.pages) {
+    const parsed = await parseMarkdown<PageFrontmatter>(entry.raw)
+    const slug = getSlugFromFilename(entry.filename)
+    pages.push({
+      slug,
+      title: parsed.frontmatter.title ?? slug,
+      layout: parsed.frontmatter.layout,
+      content: parsed.content,
+      rawContent: parsed.rawContent
+    })
+  }
+
+  return { projects, blogPosts, pages, commitsCache, siteConfig }
+}
+
+// Load all content — tries bundle first (1 request), falls back to individual fetches
 export async function loadAllContent() {
+  try {
+    const bundled = await loadAllContentFromBundle()
+    if (bundled) {
+      console.log('Loaded content from bundle')
+      return bundled
+    }
+  } catch {
+    console.warn('Bundle load failed, falling back to individual fetches')
+  }
+
   const [commitsCache, siteConfig] = await Promise.all([
     loadCommitsCache(),
     loadSiteConfig()
