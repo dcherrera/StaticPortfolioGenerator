@@ -2,7 +2,7 @@
  * Pinia store for Static Portfolio Generator plugin
  */
 
-import { defineStore } from 'pinia';
+import { defineStore, getActivePinia } from 'pinia';
 import { ref, computed } from 'vue';
 import {
   type ContentManifest,
@@ -18,7 +18,7 @@ import * as manifestService from './services/manifest';
 import * as github from './services/github';
 import { readFile, writeFile } from './services/files';
 
-const PLUGIN_ID = '_user_settings_spg';
+const STORAGE_KEY = 'spg_plugin_settings';
 
 export const useSPGStore = defineStore('spg', () => {
   // ===================
@@ -43,13 +43,18 @@ export const useSPGStore = defineStore('spg', () => {
   // ===================
   const isConfigured = computed(() => !!settings.value.projectId);
 
-  // Get GitHub token - prefer TeamIDE's token, fallback to plugin settings
+  // GitHub token - read directly from TeamIDE's accounts store
   const githubToken = computed(() => {
-    // Try to get token from TeamIDE first
-    const teamideToken = window.__teamide?.getGitHubToken?.();
-    if (teamideToken) return teamideToken;
-    // Fallback to plugin settings
-    return settings.value.githubToken || null;
+    // First check plugin settings (manual override)
+    if (settings.value.githubToken) return settings.value.githubToken;
+    // Read from TeamIDE's accounts store via shared Pinia instance
+    const pinia = getActivePinia();
+    if (!pinia) return null;
+    const accountsState = pinia.state.value['accounts'];
+    if (!accountsState?.accounts?.length) return null;
+    // Find first user account (not org) with a token
+    const userAccount = accountsState.accounts.find((a: any) => a.type === 'user' && a.token);
+    return userAccount?.token || null;
   });
 
   const hasGitHubToken = computed(() => !!githubToken.value);
@@ -73,15 +78,13 @@ export const useSPGStore = defineStore('spg', () => {
   // ===================
   async function loadSettings() {
     try {
-      console.log('[SPG Store] Loading settings from TeamIDE...');
-      const stored = await window.__teamide?.getPluginSettings?.(PLUGIN_ID);
+      const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        settings.value = { ...DEFAULT_SETTINGS, ...stored as PluginSettings };
-        console.log('[SPG Store] Loaded settings:', settings.value);
+        settings.value = { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
       } else {
-        console.log('[SPG Store] No stored settings, using defaults');
         settings.value = { ...DEFAULT_SETTINGS };
       }
+      console.log('[SPG Store] Settings loaded, hasToken:', !!githubToken.value, 'projectId:', settings.value.projectId);
     } catch (e) {
       console.error('[SPG Store] Error loading settings:', e);
       settings.value = { ...DEFAULT_SETTINGS };
@@ -91,13 +94,8 @@ export const useSPGStore = defineStore('spg', () => {
   }
 
   async function saveSettings() {
-    try {
-      console.log('[SPG Store] Saving settings:', settings.value);
-      await window.__teamide?.savePluginSettings?.(PLUGIN_ID, settings.value);
-      console.log('[SPG Store] Settings saved');
-    } catch (e) {
-      console.error('[SPG Store] Error saving settings:', e);
-    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value));
+    console.log('[SPG Store] Settings saved');
   }
 
   async function setProjectId(projectId: string) {
@@ -284,10 +282,26 @@ export const useSPGStore = defineStore('spg', () => {
   }
 
   async function pullReadme(projectSlug: string) {
-    if (!settings.value.projectId || !githubToken.value) return;
+    console.log('[SPG Store] pullReadme called for:', projectSlug);
+
+    if (!settings.value.projectId) {
+      console.warn('[SPG Store] pullReadme: no projectId configured');
+      error.value = 'No project selected';
+      return;
+    }
+
+    if (!githubToken.value) {
+      console.warn('[SPG Store] pullReadme: no GitHub token');
+      error.value = 'GitHub token not configured';
+      return;
+    }
 
     const project = manifest.value?.projects.find(p => p.slug === projectSlug);
-    if (!project?.configPath) return;
+    if (!project?.configPath) {
+      console.warn('[SPG Store] pullReadme: project not found or no configPath', projectSlug);
+      error.value = 'Project config not found';
+      return;
+    }
 
     isLoading.value = true;
     error.value = null;
@@ -295,6 +309,7 @@ export const useSPGStore = defineStore('spg', () => {
     try {
       // Load project config to get repo URL
       const configPath = `${CONTENT_PATH}${project.configPath.replace('/content', '')}`;
+      console.log('[SPG Store] pullReadme: reading config from', configPath);
       const configContent = await readFile(settings.value.projectId, configPath);
 
       const repoMatch = configContent.match(/repo:\s*(.+)/);
@@ -303,11 +318,15 @@ export const useSPGStore = defineStore('spg', () => {
         return;
       }
 
-      const parsed = github.parseRepoUrl(repoMatch[1].trim());
+      const repoUrl = repoMatch[1].trim();
+      console.log('[SPG Store] pullReadme: repo URL =', repoUrl);
+      const parsed = github.parseRepoUrl(repoUrl);
       if (!parsed) {
-        error.value = 'Could not parse repo URL';
+        error.value = 'Could not parse repo URL: ' + repoUrl;
         return;
       }
+
+      console.log('[SPG Store] pullReadme: fetching README from', parsed.owner, parsed.repo);
 
       // Fetch README
       const readme = await github.fetchReadme(
@@ -320,6 +339,8 @@ export const useSPGStore = defineStore('spg', () => {
         error.value = 'No README found in repository';
         return;
       }
+
+      console.log('[SPG Store] pullReadme: got README, length =', readme.length);
 
       // Update index.md, preserving frontmatter
       const indexPath = `${CONTENT_PATH}/projects/${projectSlug}/index.md`;
@@ -338,7 +359,16 @@ export const useSPGStore = defineStore('spg', () => {
       }
 
       await writeFile(settings.value.projectId, indexPath, newContent);
+      console.log('[SPG Store] pullReadme: file written successfully');
+
+      // Refresh the editor if this file is currently open
+      if (currentFilePath.value === indexPath) {
+        currentFileContent.value = newContent;
+        originalFileContent.value = newContent;
+        console.log('[SPG Store] pullReadme: refreshed editor content');
+      }
     } catch (e) {
+      console.error('[SPG Store] pullReadme error:', e);
       error.value = e instanceof Error ? e.message : 'Failed to pull README';
     } finally {
       isLoading.value = false;

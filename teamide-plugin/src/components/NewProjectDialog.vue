@@ -32,6 +32,9 @@
                 <q-item-label>{{ scope.opt.label }}</q-item-label>
                 <q-item-label caption>{{ scope.opt.description }}</q-item-label>
               </q-item-section>
+              <q-item-section v-if="scope.opt.imported" side>
+                <q-badge color="green-9" label="imported" />
+              </q-item-section>
             </q-item>
           </template>
         </q-select>
@@ -137,12 +140,17 @@ const statusOptions = [
   { label: 'Archived', value: 'archived' }
 ];
 
+const importedSlugs = computed(() => {
+  return new Set(store.projects.map(p => p.slug));
+});
+
 const repoOptions = computed(() => {
   return store.userRepos.map(repo => ({
     label: repo.fullName,
     value: repo.fullName,
     private: repo.private,
-    description: repo.description || 'No description'
+    description: repo.description || 'No description',
+    imported: importedSlugs.value.has(slugify(repo.name))
   }));
 });
 
@@ -209,6 +217,15 @@ async function createProject() {
 
     // Reload manifest
     await store.loadManifest();
+
+    // Pull README from GitHub if a repo was selected
+    if (selectedRepo.value) {
+      await store.pullReadme(slug.value);
+    }
+
+    // Open the new project file in the editor
+    store.selectProject(slug.value);
+    await store.openFileInPlugin(`/content/projects/${slug.value}/index.md`);
 
     // Close dialog and reset form
     emit('update:modelValue', false);
