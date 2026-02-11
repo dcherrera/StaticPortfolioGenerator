@@ -61,20 +61,15 @@
             </template>
           </q-select>
 
-          <!-- Show token status or input -->
-          <div v-if="hasTeamIDEToken" class="token-status">
-            <q-icon name="check_circle" color="positive" size="20px" />
-            <span>Using GitHub token from TeamIDE</span>
+          <!-- GitHub Token Status -->
+          <div v-if="store.hasGitHubToken" class="token-status">
+            <q-icon name="check_circle" color="positive" size="16px" />
+            <span>GitHub token active</span>
           </div>
-          <q-input
-            v-else
-            v-model="tokenInput"
-            label="GitHub Token (optional)"
-            hint="For fetching commits and README from GitHub"
-            outlined
-            dense
-            type="password"
-          />
+          <div v-else class="token-missing">
+            <q-icon name="warning" color="warning" size="16px" />
+            <span>No GitHub account linked in TeamIDE</span>
+          </div>
         </q-card-section>
 
         <q-card-actions align="right">
@@ -94,14 +89,8 @@ const store = useSPGStore();
 
 const showSettings = ref(false);
 const projectIdInput = ref(store.settings.projectId);
-const tokenInput = ref(store.settings.githubToken);
 const isLoadingRepos = ref(false);
 const availableRepos = ref<Array<{ id: string; name: string; fullName: string }>>([]);
-
-// Check if TeamIDE provides a GitHub token
-const hasTeamIDEToken = computed(() => {
-  return !!window.__teamide?.getGitHubToken?.();
-});
 
 // Compute repo options for dropdown
 const repoOptions = computed(() => {
@@ -144,18 +133,13 @@ async function fetchAvailableRepos() {
 
 function openSettings() {
   projectIdInput.value = store.settings.projectId;
-  tokenInput.value = store.settings.githubToken;
   showSettings.value = true;
   fetchAvailableRepos();
 }
 
 async function saveSettingsAndClose() {
-  console.log('[SPG PluginNav] saveSettingsAndClose called, projectId:', projectIdInput.value);
   await store.setProjectId(projectIdInput.value);
-  await store.setGitHubToken(tokenInput.value);
   showSettings.value = false;
-
-  console.log('[SPG PluginNav] Settings saved to persistent storage');
 
   // Reload manifest if project changed
   if (projectIdInput.value) {
@@ -164,14 +148,11 @@ async function saveSettingsAndClose() {
 }
 
 onMounted(async () => {
-  // Load settings from persistent storage first
   await store.loadSettings();
 
-  // Load manifest if already configured
   if (store.isConfigured) {
     store.loadManifest();
   }
-  // Fetch repos for the dropdown
   fetchAvailableRepos();
 });
 </script>
@@ -215,10 +196,21 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px;
+  padding: 8px 12px;
   background: rgba(76, 175, 80, 0.1);
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
   color: #4caf50;
+}
+
+.token-missing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 152, 0, 0.1);
+  border-radius: 4px;
+  font-size: 13px;
+  color: #ff9800;
 }
 </style>

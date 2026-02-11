@@ -65,8 +65,10 @@ export async function fetchReadme(
   repo: string
 ): Promise<string | null> {
   try {
+    const url = `${GITHUB_API}/repos/${owner}/${repo}/readme`;
+    console.log('[GitHub] fetchReadme:', url);
     const res = await fetch(
-      `${GITHUB_API}/repos/${owner}/${repo}/readme`,
+      url,
       {
         headers: {
           ...getHeaders(token),
@@ -76,11 +78,15 @@ export async function fetchReadme(
     );
 
     if (!res.ok) {
+      console.error('[GitHub] fetchReadme failed:', res.status, res.statusText);
       return null;
     }
 
-    return await res.text();
-  } catch {
+    const text = await res.text();
+    console.log('[GitHub] fetchReadme success, length:', text.length);
+    return text;
+  } catch (e) {
+    console.error('[GitHub] fetchReadme error:', e);
     return null;
   }
 }
