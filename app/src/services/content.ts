@@ -78,124 +78,127 @@ async function loadProjectConfig(configPath?: string): Promise<ProjectConfig> {
   }
 }
 
-// Load posts for a project
+// Load posts for a project (in parallel)
 async function loadProjectPosts(posts?: Array<{ path: string }>): Promise<Post[]> {
   if (!posts || posts.length === 0) return []
 
-  const loadedPosts: Post[] = []
+  const results = await Promise.all(
+    posts.map(async ({ path }) => {
+      const raw = await fetchText(path)
+      if (!raw) return null
 
-  for (const { path } of posts) {
-    const raw = await fetchText(path)
-    if (!raw) continue
+      const filename = path.split('/').pop() ?? ''
+      const postSlug = getSlugFromFilename(filename)
+      const dateFromFilename = getDateFromFilename(filename)
+      const parsed = await parseMarkdown<PostFrontmatter>(raw)
 
-    const filename = path.split('/').pop() ?? ''
-    const postSlug = getSlugFromFilename(filename)
-    const dateFromFilename = getDateFromFilename(filename)
-
-    const parsed = await parseMarkdown<PostFrontmatter>(raw)
-
-    loadedPosts.push({
-      slug: postSlug,
-      title: parsed.frontmatter.title ?? postSlug,
-      date: parsed.frontmatter.date ?? dateFromFilename ?? new Date().toISOString(),
-      tags: parsed.frontmatter.tags,
-      excerpt: parsed.frontmatter.excerpt ?? extractExcerpt(parsed.rawContent),
-      content: parsed.content,
-      rawContent: parsed.rawContent
+      return {
+        slug: postSlug,
+        title: parsed.frontmatter.title ?? postSlug,
+        date: parsed.frontmatter.date ?? dateFromFilename ?? new Date().toISOString(),
+        tags: parsed.frontmatter.tags,
+        excerpt: parsed.frontmatter.excerpt ?? extractExcerpt(parsed.rawContent),
+        content: parsed.content,
+        rawContent: parsed.rawContent
+      } as Post
     })
-  }
-
-  // Sort by date descending
-  return loadedPosts.sort((a, b) =>
-    new Date(b.date).getTime() - new Date(a.date).getTime()
   )
+
+  return results
+    .filter((p): p is Post => p !== null)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 }
 
-// Load all projects
+// Load a single project
+async function loadProject(
+  projectDef: { slug: string; indexPath: string; configPath?: string; posts?: Array<{ path: string }> },
+  commitsCache: CommitsCache
+): Promise<Project | null> {
+  const raw = await fetchText(projectDef.indexPath)
+  if (!raw) return null
+
+  const basePath = projectDef.indexPath.substring(0, projectDef.indexPath.lastIndexOf('/'))
+  const [parsed, config, posts] = await Promise.all([
+    parseMarkdown<ProjectFrontmatter>(raw, basePath),
+    loadProjectConfig(projectDef.configPath),
+    loadProjectPosts(projectDef.posts)
+  ])
+  const commits = commitsCache[projectDef.slug]?.commits ?? []
+
+  const dates: Date[] = []
+  if (commits.length > 0) {
+    dates.push(new Date(commits[0].date))
+  }
+  if (posts.length > 0) {
+    dates.push(new Date(posts[0].date))
+  }
+  const lastUpdated = dates.length > 0
+    ? new Date(Math.max(...dates.map(d => d.getTime()))).toISOString()
+    : undefined
+
+  return {
+    slug: projectDef.slug,
+    title: parsed.frontmatter.title ?? projectDef.slug,
+    tagline: parsed.frontmatter.tagline,
+    status: parsed.frontmatter.status ?? 'concept',
+    featured: parsed.frontmatter.featured ?? false,
+    order: parsed.frontmatter.order,
+    tech: parsed.frontmatter.tech,
+    links: parsed.frontmatter.links,
+    content: parsed.content,
+    rawContent: parsed.rawContent,
+    config,
+    posts,
+    commits,
+    lastUpdated
+  }
+}
+
+// Load all projects (in parallel)
 export async function loadProjects(commitsCache: CommitsCache): Promise<Project[]> {
   const manifest = await loadManifest()
   if (!manifest) return []
 
-  const projects: Project[] = []
+  const results = await Promise.all(
+    manifest.projects.map(def => loadProject(def, commitsCache))
+  )
 
-  for (const projectDef of manifest.projects) {
-    const raw = await fetchText(projectDef.indexPath)
-    if (!raw) continue
-
-    // Get base path for image resolution (e.g., /content/projects/my-project)
-    const basePath = projectDef.indexPath.substring(0, projectDef.indexPath.lastIndexOf('/'))
-    const parsed = await parseMarkdown<ProjectFrontmatter>(raw, basePath)
-    const config = await loadProjectConfig(projectDef.configPath)
-    const posts = await loadProjectPosts(projectDef.posts)
-    const commits = commitsCache[projectDef.slug]?.commits ?? []
-
-    // Determine last updated from latest commit or post
-    const dates: Date[] = []
-    if (commits.length > 0) {
-      dates.push(new Date(commits[0].date))
-    }
-    if (posts.length > 0) {
-      dates.push(new Date(posts[0].date))
-    }
-    const lastUpdated = dates.length > 0
-      ? new Date(Math.max(...dates.map(d => d.getTime()))).toISOString()
-      : undefined
-
-    projects.push({
-      slug: projectDef.slug,
-      title: parsed.frontmatter.title ?? projectDef.slug,
-      tagline: parsed.frontmatter.tagline,
-      status: parsed.frontmatter.status ?? 'concept',
-      featured: parsed.frontmatter.featured ?? false,
-      order: parsed.frontmatter.order,
-      tech: parsed.frontmatter.tech,
-      links: parsed.frontmatter.links,
-      content: parsed.content,
-      rawContent: parsed.rawContent,
-      config,
-      posts,
-      commits,
-      lastUpdated
-    })
-  }
-
-  // Sort by order
-  return projects.sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+  return results
+    .filter((p): p is Project => p !== null)
+    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
 }
 
-// Load all blog posts
+// Load all blog posts (in parallel)
 export async function loadBlogPosts(): Promise<Post[]> {
   const manifest = await loadManifest()
   if (!manifest) return []
 
-  const posts: Post[] = []
+  const results = await Promise.all(
+    manifest.blog.map(async ({ path }) => {
+      const raw = await fetchText(path)
+      if (!raw) return null
 
-  for (const { path } of manifest.blog) {
-    const raw = await fetchText(path)
-    if (!raw) continue
+      const filename = path.split('/').pop() ?? ''
+      const slug = getSlugFromFilename(filename)
+      const dateFromFilename = getDateFromFilename(filename)
+      const parsed = await parseMarkdown<PostFrontmatter>(raw)
 
-    const filename = path.split('/').pop() ?? ''
-    const slug = getSlugFromFilename(filename)
-    const dateFromFilename = getDateFromFilename(filename)
-
-    const parsed = await parseMarkdown<PostFrontmatter>(raw)
-
-    posts.push({
-      slug,
-      title: parsed.frontmatter.title ?? slug,
-      date: parsed.frontmatter.date ?? dateFromFilename ?? new Date().toISOString(),
-      tags: parsed.frontmatter.tags,
-      project: parsed.frontmatter.project,
-      excerpt: parsed.frontmatter.excerpt ?? extractExcerpt(parsed.rawContent),
-      content: parsed.content,
-      rawContent: parsed.rawContent
+      return {
+        slug,
+        title: parsed.frontmatter.title ?? slug,
+        date: parsed.frontmatter.date ?? dateFromFilename ?? new Date().toISOString(),
+        tags: parsed.frontmatter.tags,
+        project: parsed.frontmatter.project,
+        excerpt: parsed.frontmatter.excerpt ?? extractExcerpt(parsed.rawContent),
+        content: parsed.content,
+        rawContent: parsed.rawContent
+      } as Post
     })
-  }
-
-  // Sort by date descending
-  return posts.sort((a, b) =>
-    new Date(b.date).getTime() - new Date(a.date).getTime()
   )
+
+  return results
+    .filter((p): p is Post => p !== null)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 }
 
 // Load all static pages
