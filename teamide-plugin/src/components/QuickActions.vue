@@ -61,9 +61,10 @@ defineEmits<{
 async function refreshAll() {
   await store.loadManifest();
 
-  // Refresh commits for all projects
+  // Refresh commits and READMEs for all projects
   for (const project of store.projects) {
     await store.refreshCommits(project.slug);
+    await store.pullReadme(project.slug);
   }
 }
 </script>
