@@ -38,6 +38,14 @@
                 icon="launch"
                 label="Demo"
               />
+              <q-btn
+                v-if="project.links?.download"
+                :href="project.links.download"
+                flat
+                dense
+                icon="download"
+                label="Download"
+              />
             </div>
           </div>
         </header>
