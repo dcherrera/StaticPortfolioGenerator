@@ -159,7 +159,7 @@ export const useSPGStore = defineStore('spg', () => {
     }
   }
 
-  async function refreshCommits(projectSlug?: string) {
+  async function refreshCommits(projectSlug?: string, skipPersist = false) {
     const slug = projectSlug || selectedProjectSlug.value;
     if (!slug || !settings.value.projectId) return;
 
@@ -223,10 +223,48 @@ export const useSPGStore = defineStore('spg', () => {
         latestSha: commits[0]?.sha,
         commits
       };
+
+      // Persist to disk (can be skipped if caller will batch-persist)
+      if (!skipPersist) await persistCommitsCache();
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to refresh commits';
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  async function persistCommitsCache() {
+    if (!settings.value.projectId) return;
+
+    const cacheJson = JSON.stringify(commitsCache.value, null, 2);
+
+    try {
+      // Write to the correct public path so the dev server can serve it
+      await writeFile(
+        settings.value.projectId,
+        `${DATA_PATH}/commits-cache.json`,
+        cacheJson
+      );
+      console.log('[SPG Store] Commits cache persisted to', `${DATA_PATH}/commits-cache.json`);
+    } catch (e) {
+      console.error('[SPG Store] Failed to persist commits cache:', e);
+    }
+
+    // Also update content-bundle.json so the site picks up commits immediately
+    // (the site loads the bundle first and uses its commitsCache)
+    try {
+      const bundlePath = 'app/public/content-bundle.json';
+      const bundleRaw = await readFile(settings.value.projectId, bundlePath);
+      const bundle = JSON.parse(bundleRaw);
+      bundle.commitsCache = commitsCache.value;
+      await writeFile(
+        settings.value.projectId,
+        bundlePath,
+        JSON.stringify(bundle)
+      );
+      console.log('[SPG Store] Updated content-bundle.json with commits');
+    } catch (e) {
+      console.warn('[SPG Store] Could not update content-bundle.json:', e);
     }
   }
 
@@ -502,6 +540,7 @@ export const useSPGStore = defineStore('spg', () => {
     loadManifest,
     fetchUserRepos,
     refreshCommits,
+    persistCommitsCache,
     toggleCommitVisibility,
     pullReadme,
     selectProject,

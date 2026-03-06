@@ -70,6 +70,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useSPGStore } from './store';
+import { deleteFile } from './services/files';
+import * as manifestService from './services/manifest';
+import { CONTENT_PATH } from './types';
 import SiteStructure from './components/SiteStructure.vue';
 import CommitCuration from './components/CommitCuration.vue';
 import QuickActions from './components/QuickActions.vue';
@@ -123,10 +126,42 @@ function confirmDeletePage(page: { path: string }) {
 }
 
 async function executeDelete() {
-  if (!pendingDelete.value) return;
+  if (!pendingDelete.value || !store.settings.projectId) return;
 
-  // TODO: Implement actual deletion via manifest service
-  console.log('Delete:', pendingDelete.value);
+  const projectId = store.settings.projectId;
+
+  try {
+    if (pendingDelete.value.type === 'project') {
+      const slug = pendingDelete.value.data.slug;
+      // Remove from manifest
+      await manifestService.removeProject(projectId, slug);
+      // Delete project directory
+      await deleteFile(projectId, `${CONTENT_PATH}/projects/${slug}`);
+      // Close file if it was open
+      if (store.currentFilePath?.includes(`/projects/${slug}/`)) {
+        store.closeCurrentFile();
+      }
+    } else if (pendingDelete.value.type === 'blog') {
+      const path = pendingDelete.value.data.path;
+      await manifestService.removeBlogPost(projectId, path);
+      const fullPath = path.startsWith('/content') ? `app/public${path}` : path;
+      await deleteFile(projectId, fullPath);
+      if (store.currentFilePath === fullPath) {
+        store.closeCurrentFile();
+      }
+    } else if (pendingDelete.value.type === 'page') {
+      const path = pendingDelete.value.data.path;
+      await manifestService.removePage(projectId, path);
+      const fullPath = path.startsWith('/content') ? `app/public${path}` : path;
+      await deleteFile(projectId, fullPath);
+      if (store.currentFilePath === fullPath) {
+        store.closeCurrentFile();
+      }
+    }
+  } catch (e) {
+    console.error('[SPG] Delete failed:', e);
+    store.error = e instanceof Error ? e.message : 'Failed to delete';
+  }
 
   pendingDelete.value = null;
   showDeleteDialog.value = false;
