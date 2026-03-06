@@ -63,9 +63,12 @@ async function refreshAll() {
 
   // Refresh commits and READMEs for all projects
   for (const project of store.projects) {
-    await store.refreshCommits(project.slug);
+    await store.refreshCommits(project.slug, true);
     await store.pullReadme(project.slug);
   }
+
+  // Persist all commits to disk once
+  await store.persistCommitsCache();
 }
 </script>
 
